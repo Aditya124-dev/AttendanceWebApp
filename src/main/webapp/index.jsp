@@ -538,55 +538,63 @@
 
 <div class="layout">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
+<!-- SIDEBAR -->
+<aside class="sidebar">
 
-        <div class="brand">
-            <div class="brand-icon">A</div>
-            <div>
-                <h2>AttendancePro</h2>
-                <p>STUDENT MANAGEMENT</p>
-            </div>
+    <div class="brand">
+        <div class="brand-icon">A</div>
+        <div>
+            <h2>AttendancePro</h2>
+            <p>STUDENT MANAGEMENT</p>
         </div>
+    </div>
 
-        <p class="menu-label">MAIN MENU</p>
+    <p class="menu-label">MAIN MENU</p>
 
-        <nav>
-        <a class="nav-link" href="studentLogin.jsp">
-    <span class="nav-icon">&#127891;</span> Student Portal
-</a>
-            <a class="nav-link" href="attendanceAnalytics.jsp">
-                <span class="nav-icon">&#9636;</span> Analytics
-            </a>
-            <a class="nav-link active" href="index.jsp">
-                <span class="nav-icon">&#9632;</span> Dashboard
-            </a>
+    <nav>
+        <a class="nav-link" href="<%= request.getContextPath() %>/studentLogin.jsp">
+            <span class="nav-icon">&#127891;</span> Student Portal
+        </a>
 
-            <a class="nav-link" href="addStudent.jsp">
-                <span class="nav-icon">+</span> Add Student
-            </a>
+        <a class="nav-link active" href="<%= request.getContextPath() %>/index.jsp">
+            <span class="nav-icon">&#9632;</span> Dashboard
+        </a>
 
-            <a class="nav-link" href="markAttendance.jsp">
-                <span class="nav-icon">&#10003;</span> Mark Attendance
-            </a>
+        <a class="nav-link" href="<%= request.getContextPath() %>/addStudent.jsp">
+            <span class="nav-icon">+</span> Add Student
+        </a>
 
-            <a class="nav-link" href="viewReport.jsp">
-                <span class="nav-icon">&#9776;</span> Attendance Report
-            </a>
+        <a class="nav-link" href="<%= request.getContextPath() %>/markAttendance.jsp">
+            <span class="nav-icon">&#10003;</span> Mark Attendance
+        </a>
 
-            <a class="nav-link" href="attendanceSummary.jsp">
-                <span class="nav-icon">&#9636;</span> Attendance Summary
-            </a>
-        </nav>
+        <a class="nav-link" href="<%= request.getContextPath() %>/adminQr.jsp">
+            <span class="nav-icon">&#9638;</span> QR Attendance
+        </a>
 
-        <div class="sidebar-bottom">
-            <span class="online-dot"></span> Application Dashboard
-            <br>
-            Manage student records and attendance from one place.
-        </div>
+        <a class="nav-link" href="<%= request.getContextPath() %>/attendanceAnalytics.jsp">
+            <span class="nav-icon">&#9636;</span> Analytics
+        </a>
 
-    </aside>
+        <a class="nav-link" href="<%= request.getContextPath() %>/viewReport.jsp">
+            <span class="nav-icon">&#9776;</span> Student Report
+        </a>
 
+        <a class="nav-link" href="<%= request.getContextPath() %>/attendanceSummary.jsp">
+            <span class="nav-icon">&#128202;</span> Attendance Summary
+        </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+        <span class="online-dot"></span> Application Dashboard
+        <br>
+        Manage student records and attendance from one place.
+    </div>
+
+</aside>
+
+
+   
     <!-- MAIN DASHBOARD -->
     <main class="main">
 
