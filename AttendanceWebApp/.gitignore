@@ -1,0 +1,11 @@
+
+target/
+bin/
+.metadata/
+Servers/
+*.log
+.env
+.env.*
+!.env.example
+mysql-init.txt
+src/main/webapp/WEB-INF/lib/*.jar
