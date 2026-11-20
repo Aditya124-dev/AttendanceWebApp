@@ -1,73 +1,30 @@
+
 package com.attendance;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
+import java.util.Properties;
+
+import jakarta.mail.Authenticator;
+import jakarta.mail.Message;
+import jakarta.mail.MessagingException;
+import jakarta.mail.PasswordAuthentication;
+import jakarta.mail.Session;
+import jakarta.mail.Transport;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
 
 public class EmailService {
-
-    private static final String API_URL =
-            "https://api.resend.com/emails";
-
-    private static final HttpClient HTTP_CLIENT =
-            HttpClient.newHttpClient();
 
     private static String getRequiredEnv(String name) {
         String value = System.getenv(name);
 
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(
-                    "Required environment variable is missing: " + name
+                "Missing environment variable: " + name
             );
         }
 
-        return value;
-    }
-
-    private static String escapeJson(String value) {
-        if (value == null) {
-            return "";
-        }
-
-        StringBuilder result = new StringBuilder();
-
-        for (char c : value.toCharArray()) {
-            switch (c) {
-                case '"':
-                    result.append("\\\"");
-                    break;
-
-                case '\\':
-                    result.append("\\\\");
-                    break;
-
-                case '\n':
-                    result.append("\\n");
-                    break;
-
-                case '\r':
-                    result.append("\\r");
-                    break;
-
-                case '\t':
-                    result.append("\\t");
-                    break;
-
-                default:
-                    if (c < 0x20) {
-                        result.append(
-                                String.format("\\u%04x", (int) c)
-                        );
-                    } else {
-                        result.append(c);
-                    }
-            }
-        }
-
-        return result.toString();
+        return value.trim();
     }
 
     public static void sendEmail(
@@ -79,42 +36,56 @@ public class EmailService {
         if (to == null || to.isBlank()
                 || subject == null || subject.isBlank()
                 || html == null || html.isBlank()) {
-
             throw new IllegalArgumentException(
-                    "Recipient, subject and email body are required."
+                "Recipient, subject and email body are required."
             );
         }
 
-        String apiKey = getRequiredEnv("RESEND_API_KEY");
-        String fromEmail = getRequiredEnv("RESEND_FROM_EMAIL");
+        String username = getRequiredEnv("MAIL_USERNAME");
+        String appPassword = getRequiredEnv("MAIL_APP_PASSWORD");
 
-        String json = "{"
-                + "\"from\":\"" + escapeJson(fromEmail) + "\","
-                + "\"to\":[\"" + escapeJson(to) + "\"],"
-                + "\"subject\":\"" + escapeJson(subject) + "\","
-                + "\"html\":\"" + escapeJson(html) + "\""
-                + "}";
+        Properties properties = new Properties();
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(API_URL))
-                .header("Authorization", "Bearer " + apiKey)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(
-                        json, StandardCharsets.UTF_8))
-                .build();
+        properties.put("mail.smtp.host", "smtp.gmail.com");
+        properties.put("mail.smtp.port", "587");
+        properties.put("mail.smtp.auth", "true");
+        properties.put("mail.smtp.starttls.enable", "true");
+        properties.put("mail.smtp.starttls.required", "true");
+        properties.put("mail.smtp.connectiontimeout", "15000");
+        properties.put("mail.smtp.timeout", "15000");
+        properties.put("mail.smtp.writetimeout", "15000");
 
-        HttpResponse<String> response = HTTP_CLIENT.send(
-                request,
-                HttpResponse.BodyHandlers.ofString(
-                        StandardCharsets.UTF_8)
+        Session session = Session.getInstance(
+            properties,
+            new Authenticator() {
+                @Override
+                protected PasswordAuthentication getPasswordAuthentication() {
+                    return new PasswordAuthentication(
+                        username,
+                        appPassword
+                    );
+                }
+            }
         );
 
-        int status = response.statusCode();
+        try {
+            MimeMessage message = new MimeMessage(session);
 
-        if (status < 200 || status >= 300) {
+            message.setFrom(new InternetAddress(username));
+            message.setRecipients(
+                Message.RecipientType.TO,
+                InternetAddress.parse(to.trim())
+            );
+
+            message.setSubject(subject, "UTF-8");
+            message.setContent(html, "text/html; charset=UTF-8");
+
+            Transport.send(message);
+
+        } catch (MessagingException e) {
             throw new IOException(
-                    "Resend email request failed. HTTP status: "
-                            + status
+                "Gmail SMTP email delivery failed: " + e.getMessage(),
+                e
             );
         }
     }
