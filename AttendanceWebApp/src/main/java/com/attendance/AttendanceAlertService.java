@@ -234,17 +234,6 @@ public class AttendanceAlertService {
 
                 continue;
 
-            } catch (InterruptedException e) {
-
-                markFailed(alertId, e);
-
-                Thread.currentThread().interrupt();
-
-                System.err.println(
-                        "Email sending interrupted for student ID "
-                        + student.studentId);
-
-                break;
             }
 
             /*

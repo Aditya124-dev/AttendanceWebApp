@@ -1,4 +1,3 @@
-
 package com.attendance;
 
 public final class EmailUtil {
@@ -11,7 +10,6 @@ public final class EmailUtil {
 
         if (recipientEmail == null || recipientEmail.isBlank()
                 || otp == null || otp.isBlank()) {
-
             throw new IllegalArgumentException(
                     "Recipient email and OTP are required."
             );
@@ -27,7 +25,7 @@ public final class EmailUtil {
                 + "If you did not request this, ignore this email.\n\n"
                 + "AttendancePro - Student Attendance Management System";
 
-        GmailApiEmailSender.sendText(
+        AppsScriptRelayEmailSender.sendText(
                 recipientEmail,
                 subject,
                 message
