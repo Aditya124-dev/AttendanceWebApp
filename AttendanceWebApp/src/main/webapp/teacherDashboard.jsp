@@ -5,6 +5,7 @@
 <%!
     private String escapeHtml(String value) {
         if (value == null) return "";
+
         return value.replace("&", "&amp;")
                     .replace("<", "&lt;")
                     .replace(">", "&gt;")
@@ -16,11 +17,13 @@
 <%
     if (session.getAttribute("teacherId") == null
             || !"TEACHER".equals(session.getAttribute("userRole"))) {
+
         response.sendRedirect(request.getContextPath() + "/teacherLogin.jsp");
         return;
     }
 
     String teacherName = (String) session.getAttribute("teacherName");
+
     if (teacherName == null || teacherName.trim().isEmpty()) {
         teacherName = "Teacher";
     }
@@ -35,9 +38,11 @@
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Teacher Dashboard | AttendancePro</title>
 
     <style>
@@ -211,11 +216,11 @@
             border-top-color: #d97706;
         }
 
-        .alert-card button {
+        .alert-card a {
             background: #b45309;
         }
 
-        .alert-card button:hover {
+        .alert-card a:hover {
             background: #92400e;
         }
 
@@ -280,6 +285,7 @@
 
     <section class="welcome">
         <h2>Welcome, <%= escapeHtml(teacherName) %>!</h2>
+
         <p>
             Manage students, lectures, attendance QR codes
             and attendance reports from one place.
@@ -287,43 +293,50 @@
     </section>
 
     <% if (alertMessage != null && !alertMessage.isBlank()) { %>
+
         <div class="notice">
             <%= escapeHtml(alertMessage) %>
         </div>
+
     <% } %>
 
     <section class="cards">
 
         <article class="card student-card">
             <h3>Student Management</h3>
+
             <p>
                 Register new students by entering their roll number,
                 name, course, semester, email and mobile number.
             </p>
+
             <a href="<%= request.getContextPath() %>/addStudent.jsp">
                 Add New Student
             </a>
         </article>
-       <article class="card" style="border-top-color:#0d9488;">
-    <h3>Mark Student Attendance</h3>
 
-    <p>
-        Manually record daily attendance for students.
-        Select Present or Absent and save the attendance record.
-    </p>
+        <article class="card" style="border-top-color:#0d9488;">
+            <h3>Mark Student Attendance</h3>
 
-    <a href="<%= request.getContextPath() %>/markAttendance.jsp"
-       style="background:#0d9488;">
-        Mark Attendance
-    </a>
-</article>
+            <p>
+                Manually record daily attendance for students.
+                Select Present or Absent and save the attendance record.
+            </p>
+
+            <a href="<%= request.getContextPath() %>/markAttendance.jsp"
+               style="background:#0d9488;">
+                Mark Attendance
+            </a>
+        </article>
 
         <article class="card lecture-card">
             <h3>Lecture Management</h3>
+
             <p>
                 Manage lecture sessions for your assigned classes
                 and subjects.
             </p>
+
             <a href="<%= request.getContextPath() %>/teacherLectures.jsp">
                 Open Lectures
             </a>
@@ -331,22 +344,28 @@
 
         <article class="card">
             <h3>Generate Attendance QR</h3>
+
             <p>
                 Create a time-limited attendance QR code
                 for the current scheduled lecture.
             </p>
+
             <form action="<%= request.getContextPath() %>/generateQr"
                   method="post">
+
                 <button type="submit">Generate QR</button>
+
             </form>
         </article>
 
         <article class="card report-card">
             <h3>Attendance Report</h3>
+
             <p>
                 View saved attendance records, search students,
                 filter by date or status and export a CSV report.
             </p>
+
             <a href="<%= request.getContextPath() %>/viewReport.jsp">
                 View Attendance Report
             </a>
@@ -354,10 +373,12 @@
 
         <article class="card report-card">
             <h3>Attendance Summary</h3>
+
             <p>
                 Review attendance percentages and summaries
                 for students and subjects.
             </p>
+
             <a href="<%= request.getContextPath() %>/attendanceSummary.jsp">
                 View Summary
             </a>
@@ -365,15 +386,15 @@
 
         <article class="card alert-card">
             <h3>Low Attendance Email Alerts</h3>
+
             <p>
-                Check subject-wise attendance and process email
-                alerts for eligible students below the attendance threshold.
+                Preview overall attendance and identify students
+                below the attendance threshold before sending alerts.
             </p>
-            <form action="<%= request.getContextPath() %>/sendAttendanceAlerts"
-                  method="post"
-                  onsubmit="return confirm('Process low-attendance email alerts now?');">
-                <button type="submit">Process Email Alerts</button>
-            </form>
+
+            <a href="<%= request.getContextPath() %>/attendanceAlertPreview">
+                Preview Attendance Alerts
+            </a>
         </article>
 
     </section>

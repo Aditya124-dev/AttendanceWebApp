@@ -27,7 +27,7 @@
             <version>9.5.0</version>
         </dependency>
 
-        <!-- Jakarta Servlet API for Tomcat 10 -->
+        <!-- Jakarta Servlet API -->
         <dependency>
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
@@ -48,18 +48,38 @@
             <version>3.5.4</version>
         </dependency>
 
-        <!-- Jakarta Mail API -->
+        <!-- Existing Jakarta Mail: retain during migration -->
         <dependency>
             <groupId>jakarta.mail</groupId>
             <artifactId>jakarta.mail-api</artifactId>
             <version>2.1.3</version>
         </dependency>
 
-        <!-- Angus Mail Implementation -->
         <dependency>
             <groupId>org.eclipse.angus</groupId>
             <artifactId>angus-mail</artifactId>
             <version>2.0.3</version>
+        </dependency>
+
+        <!-- Google Gmail API -->
+        <dependency>
+            <groupId>com.google.apis</groupId>
+            <artifactId>google-api-services-gmail</artifactId>
+            <version>v1-rev20261106-2.9.2</version>
+        </dependency>
+
+        <!-- Google API Client -->
+        <dependency>
+            <groupId>com.google.api-client</groupId>
+            <artifactId>google-api-client</artifactId>
+            <version>2.9.2</version>
+        </dependency>
+
+        <!-- Google OAuth2 Authentication -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>1.58.0</version>
         </dependency>
 
     </dependencies>
@@ -68,7 +88,6 @@
         <finalName>AttendanceWebApp</finalName>
 
         <plugins>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -85,7 +104,6 @@
                 <artifactId>maven-war-plugin</artifactId>
                 <version>3.4.0</version>
             </plugin>
-
         </plugins>
     </build>
 
