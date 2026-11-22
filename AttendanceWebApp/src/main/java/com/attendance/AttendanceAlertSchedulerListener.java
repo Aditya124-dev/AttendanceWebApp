@@ -32,6 +32,16 @@ public class AttendanceAlertSchedulerListener
     @Override
     public void contextInitialized(ServletContextEvent event) {
 
+        String schedulerEnabled =
+                System.getenv("ATTENDANCE_LOCAL_SCHEDULER_ENABLED");
+
+        if ("false".equalsIgnoreCase(schedulerEnabled)) {
+            event.getServletContext().log(
+                    "Local attendance scheduler disabled by environment configuration."
+            );
+            return;
+        }
+
         scheduler = Executors.newSingleThreadScheduledExecutor(task -> {
             Thread thread = new Thread(
                     task,
