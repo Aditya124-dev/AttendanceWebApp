@@ -1,0 +1,43 @@
+name: Weekly Attendance Alerts
+
+on:
+  schedule:
+    - cron: '30 12 * * 0'
+  workflow_dispatch:
+    inputs:
+      send_alerts:
+        description: 'Actually send eligible student emails'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-attendance-alerts
+  cancel-in-progress: false
+
+jobs:
+  send-alerts:
+    if: github.event_name == 'schedule' || inputs.send_alerts == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Trigger AttendancePro scheduler
+        env:
+          SCHEDULER_TOKEN: ${{ secrets.ATTENDANCE_SCHEDULER_TOKEN }}
+        run: |
+          if [ -z "$SCHEDULER_TOKEN" ]; then
+            echo "ERROR: Scheduler secret is missing."
+            exit 1
+          fi
+
+          curl --fail-with-body --show-error --silent \
+            --connect-timeout 30 \
+            --max-time 900 \
+            -X POST \
+            -H "Authorization: Bearer ${SCHEDULER_TOKEN}" \
+            -H "Content-Type: application/json" \
+            https://attendancewebapp-5nym.onrender.com/scheduledAttendanceAlerts
