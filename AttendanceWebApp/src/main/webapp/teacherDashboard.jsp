@@ -313,6 +313,11 @@
             <a href="<%= request.getContextPath() %>/addStudent.jsp">
                 Add New Student
             </a>
+
+            <a href="<%= request.getContextPath() %>/teacherStudents"
+               style="margin-left:10px;background:#0d9488;">
+                Manage Students
+            </a>
         </article>
 
         <article class="card" style="border-top-color:#0d9488;">

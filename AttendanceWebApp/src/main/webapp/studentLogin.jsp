@@ -1,7 +1,14 @@
-
 <%@ page contentType="text/html; charset=UTF-8"
          pageEncoding="UTF-8" %>
-
+<%
+    // Login page ko browser/proxy cache na kare (back button se purana form na dikhe)
+    response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    response.setHeader("Pragma", "no-cache");
+    response.setDateHeader("Expires", 0);
+    response.setHeader("X-Content-Type-Options", "nosniff");
+    response.setHeader("X-Frame-Options", "DENY");
+    response.setHeader("Referrer-Policy", "same-origin");
+%>
 <%!
     private String escapeHtml(String value) {
         if (value == null) return "";
@@ -13,88 +20,114 @@
                     .replace("'", "&#39;");
     }
 %>
-
+<%
+    String ctx      = escapeHtml(request.getContextPath());
+    String error    = (String) request.getAttribute("error");
+    String success  = (String) request.getAttribute("success");
+    // Servlet agar login fail hone par "rollNo" attribute set kare to field pre-fill ho jayega
+    String prefill  = (String) request.getAttribute("rollNo");
+    boolean registered = "1".equals(request.getParameter("registered"));
+    boolean loggedOut  = "1".equals(request.getParameter("loggedOut"));
+    int year = java.time.Year.now().getValue();
+%>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#0f3d3e">
 
-    <title>Student Login | AttendancePro</title>
+    <title>Student Sign In | AttendancePro</title>
 
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+        :root {
+            --ink:        #10282c;
+            --ink-soft:   #3d5559;
+            --muted:      #66797c;
+            --paper:      #f4f6f5;
+            --surface:    #ffffff;
+            --line:       #d8e0de;
+            --brand:      #0f3d3e;
+            --brand-2:    #14595a;
+            --accent:     #0f766e;
+            --accent-hov: #0b5e58;
+            --focus:      #1d6fd1;
+            --ok-bg:      #e9f6ef;
+            --ok-line:    #bfe3cf;
+            --ok-text:    #17603d;
+            --err-bg:     #fdeeee;
+            --err-line:   #f3c4c4;
+            --err-text:   #9b1c1c;
+            --warn-bg:    #fff6e0;
+            --warn-line:  #f1dba0;
+            --warn-text:  #7a5200;
+
+            --font-ui:    "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+            --font-head:  "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
         }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html, body { margin: 0; padding: 0; }
 
         body {
             min-height: 100vh;
-            padding: 25px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            background: #eef2ff;
-            background-image:
-                radial-gradient(circle at 10% 10%, #dbe6ff 0, transparent 35%),
-                radial-gradient(circle at 90% 90%, #e5dcff 0, transparent 35%);
-            color: #192746;
-            font-family: "Segoe UI", Arial, sans-serif;
+            justify-content: center;
+            gap: 18px;
+            padding: 28px 20px;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: var(--font-ui);
+            font-size: 15px;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .app {
+        a { color: var(--accent); }
+
+        :focus-visible {
+            outline: 3px solid var(--focus);
+            outline-offset: 2px;
+        }
+
+        .skip-link {
+            position: absolute;
+            left: -9999px;
+            top: 8px;
+            padding: 10px 14px;
+            background: var(--ink);
+            color: #fff;
+            border-radius: 6px;
+            z-index: 10;
+        }
+        .skip-link:focus { left: 12px; }
+
+        /* ---------- Shell ---------- */
+        .shell {
             width: 100%;
-            max-width: 1050px;
-            min-height: 600px;
+            max-width: 1040px;
             display: grid;
-            grid-template-columns: 1.05fr 0.95fr;
+            grid-template-columns: 1.02fr 0.98fr;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 14px;
             overflow: hidden;
-            border-radius: 26px;
-            background: white;
-            box-shadow: 0 25px 70px rgba(30, 47, 100, 0.14);
+            box-shadow: 0 1px 2px rgba(16, 40, 44, .05), 0 18px 40px -18px rgba(16, 40, 44, .22);
         }
 
+        /* ---------- Brand panel ---------- */
         .brand-panel {
-            position: relative;
-            overflow: hidden;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 38px;
-            color: white;
-            background: linear-gradient(145deg, #172554, #3548a8 65%, #6558d9);
-        }
-
-        .brand-panel::before,
-        .brand-panel::after {
-            content: "";
-            position: absolute;
-            border: 1px solid rgba(255,255,255,.13);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-
-        .brand-panel::before {
-            width: 360px;
-            height: 360px;
-            right: -145px;
-            top: 130px;
-        }
-
-        .brand-panel::after {
-            width: 260px;
-            height: 260px;
-            right: -95px;
-            top: 180px;
-        }
-
-        .brand,
-        .hero,
-        .brand-footer {
-            position: relative;
-            z-index: 1;
+            gap: 32px;
+            padding: 40px 42px;
+            color: #e8f1ef;
+            background: var(--brand);
         }
 
         .brand {
@@ -103,355 +136,339 @@
             gap: 12px;
         }
 
-        .brand-logo {
-            width: 46px;
-            height: 46px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 14px;
-            background: rgba(255,255,255,.16);
-            border: 1px solid rgba(255,255,255,.25);
-            font-size: 23px;
-            font-weight: 800;
+        .logo {
+            width: 42px;
+            height: 42px;
+            flex: none;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            background: #e8f1ef;
+            color: var(--brand);
         }
 
         .brand-name {
-            font-size: 19px;
-            font-weight: 750;
+            font-size: 18px;
+            font-weight: 650;
             letter-spacing: .2px;
+            color: #fff;
         }
 
-        .brand-caption {
-            margin-top: 4px;
-            color: #c7d2fe;
-            font-size: 10px;
-            letter-spacing: 1.8px;
-        }
-
-        .hero {
-            margin: 45px 0;
-        }
-
-        .hero-label {
-            display: inline-block;
-            padding: 8px 12px;
-            border-radius: 25px;
-            border: 1px solid rgba(255,255,255,.2);
-            background: rgba(255,255,255,.09);
-            color: #e0e7ff;
-            font-size: 11px;
-            letter-spacing: .6px;
+        .brand-sub {
+            font-size: 13px;
+            color: #a9c4c0;
         }
 
         .hero h1 {
-            max-width: 430px;
-            margin-top: 23px;
-            font-size: clamp(31px, 3.4vw, 43px);
-            line-height: 1.18;
-            letter-spacing: -1.3px;
+            margin: 0;
+            max-width: 15ch;
+            font-family: var(--font-head);
+            font-weight: 600;
+            font-size: clamp(30px, 3.4vw, 40px);
+            line-height: 1.15;
+            letter-spacing: -.5px;
+            color: #fff;
         }
 
         .hero p {
-            max-width: 370px;
-            margin-top: 18px;
-            color: #d2dcff;
-            font-size: 14px;
-            line-height: 1.8;
-        }
-
-        .illustration {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-top: 25px;
-        }
-
-        .illustration svg {
-            width: 100%;
-            max-width: 340px;
-            height: auto;
-        }
-
-        .brand-footer {
-            color: #c7d2fe;
-            font-size: 11px;
+            margin: 16px 0 0;
+            max-width: 44ch;
+            font-size: 15px;
             line-height: 1.7;
+            color: #bcd3cf;
         }
 
-        .login-panel {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            padding: 45px clamp(25px, 4.5vw, 54px);
-            background: white;
-        }
-
-        .mobile-brand {
-            display: none;
-        }
-
-        .welcome-label {
-            color: #5969df;
-            font-size: 11px;
-            font-weight: 800;
-            letter-spacing: 1.8px;
-        }
-
-        .login-panel h2 {
-            margin-top: 12px;
-            font-size: 31px;
-            letter-spacing: -.8px;
-            color: #192746;
-        }
-
-        .subtitle {
-            margin-top: 10px;
-            margin-bottom: 28px;
-            color: #8490a7;
-            font-size: 13px;
-            line-height: 1.7;
-        }
-
-        .message {
-            padding: 12px 14px;
-            margin-bottom: 17px;
+        /* Attendance register: the one memorable element */
+        .register-card {
+            margin-top: 28px;
+            max-width: 400px;
+            padding: 16px 18px 14px;
             border-radius: 10px;
-            font-size: 12px;
-            line-height: 1.6;
+            background: #fff;
+            color: var(--ink);
+            box-shadow: 0 12px 28px -14px rgba(0, 0, 0, .5);
         }
 
-        .error {
-            color: #a92735;
-            background: #fff0f2;
-            border: 1px solid #ffd9de;
+        .register-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 650;
         }
 
-        .success {
-            color: #16734a;
-            background: #eafaf1;
-            border: 1px solid #cceedd;
+        .register-head span {
+            font-weight: 500;
+            color: var(--muted);
         }
 
-        .field {
-            margin-bottom: 19px;
+        .register-grid {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
         }
 
-        .field label {
-            display: block;
-            margin-bottom: 8px;
-            color: #35425d;
+        .register-grid th,
+        .register-grid td {
+            padding: 7px 0;
+            text-align: center;
+            border-bottom: 1px solid #e8eeec;
+        }
+
+        .register-grid th {
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        .register-grid th:first-child,
+        .register-grid td:first-child {
+            text-align: left;
+            font-weight: 600;
+            color: var(--ink-soft);
+        }
+
+        .register-grid tr:last-child td { border-bottom: 0; }
+
+        .mark {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            border-radius: 50%;
             font-size: 12px;
             font-weight: 700;
         }
+        .mark.p { background: #dff3e8; color: #17603d; }
+        .mark.a { background: #fbe3e3; color: #9b1c1c; }
 
-        .input-wrap {
-            position: relative;
-        }
-
-        .input-wrap input {
-            width: 100%;
-            height: 49px;
-            padding: 0 14px;
-            border: 1px solid #e0e5ef;
-            border-radius: 11px;
-            background: #fbfcff;
-            color: #1b2944;
-            font-size: 14px;
-            transition: border-color .2s, box-shadow .2s;
-        }
-
-        .input-wrap input:focus {
-            outline: none;
-            border-color: #5969e8;
-            box-shadow: 0 0 0 4px rgba(89,105,232,.10);
-            background: white;
-        }
-
-        .input-wrap input::placeholder {
-            color: #a7b0c2;
-        }
-
-        .password-input {
-            padding-right: 72px !important;
-        }
-
-        .show-password {
-            position: absolute;
-            top: 0;
-            right: 12px;
-            height: 49px;
-            border: 0;
-            background: transparent;
-            color: #5969df;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: 750;
-        }
-
-        .forgot-password {
-            display: block;
-            margin-top: -9px;
-            margin-bottom: 19px;
-            text-align: right;
-        }
-
-        .forgot-password a {
-            color: #4c5fe0;
+        .register-foot {
+            margin-top: 10px;
             font-size: 12px;
-            font-weight: 750;
-            text-decoration: none;
+            color: var(--muted);
         }
 
-        .forgot-password a:hover {
-            text-decoration: underline;
+        .brand-footer {
+            font-size: 13px;
+            color: #a9c4c0;
         }
 
-        .login-button {
-            width: 100%;
-            height: 50px;
-            margin-top: 5px;
-            border: 0;
-            border-radius: 11px;
-            background: linear-gradient(100deg, #4357d9, #6659df);
-            color: white;
-            font-size: 14px;
-            font-weight: 750;
-            cursor: pointer;
-            box-shadow: 0 8px 18px rgba(76,87,212,.22);
-            transition: transform .2s, box-shadow .2s;
-        }
-
-        .login-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 11px 23px rgba(76,87,212,.30);
-        }
-
-        .login-button:active {
-            transform: translateY(0);
-        }
-
-        .register {
-            margin-top: 25px;
-            text-align: center;
-            color: #8490a7;
-            font-size: 12px;
-        }
-
-        .register a {
-            color: #4c5fe0;
-            font-weight: 750;
-            text-decoration: none;
-        }
-
-        .register a:hover {
-            text-decoration: underline;
-        }
-
-        .divider {
-            height: 1px;
-            margin: 25px 0 18px;
-            background: #eef0f6;
-        }
-
-        .security-note {
+        /* ---------- Form panel ---------- */
+        .form-panel {
             display: flex;
+            flex-direction: column;
             justify-content: center;
-            align-items: center;
-            gap: 7px;
-            color: #8994a8;
-            text-align: center;
-            font-size: 10px;
+            padding: 44px clamp(24px, 4.5vw, 56px);
+        }
+
+        .mobile-brand { display: none; }
+
+        .form-panel h2 {
+            margin: 0;
+            font-family: var(--font-head);
+            font-size: 30px;
+            font-weight: 600;
+            letter-spacing: -.4px;
+            color: var(--ink);
+        }
+
+        .subtitle {
+            margin: 8px 0 26px;
+            color: var(--muted);
+            font-size: 14.5px;
             line-height: 1.6;
         }
 
-        .security-icon {
-            color: #319b72;
-            font-size: 15px;
+        .message {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 16px;
+            padding: 12px 14px;
+            border: 1px solid;
+            border-radius: 8px;
+            font-size: 13.5px;
+            line-height: 1.55;
         }
+        .message svg { flex: none; margin-top: 2px; }
+        .message.success { background: var(--ok-bg);   border-color: var(--ok-line);   color: var(--ok-text); }
+        .message.error   { background: var(--err-bg);  border-color: var(--err-line);  color: var(--err-text); }
+
+        .field { margin-bottom: 18px; }
+
+        .field label {
+            display: block;
+            margin-bottom: 7px;
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--ink-soft);
+        }
+
+        .input-wrap { position: relative; }
+
+        .input-wrap input {
+            width: 100%;
+            height: 48px;
+            padding: 0 14px;
+            border: 1px solid #c5d0cd;
+            border-radius: 8px;
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+            font-size: 15px;
+            transition: border-color .15s, box-shadow .15s;
+        }
+
+        .input-wrap input::placeholder { color: #94a3a1; }
+
+        .input-wrap input:hover { border-color: #9fb1ad; }
+
+        .input-wrap input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, .18);
+        }
+
+        .input-wrap input.has-toggle { padding-right: 76px; }
+
+        .toggle-password {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            height: 36px;
+            padding: 0 12px;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--accent);
+            font: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .toggle-password:hover { background: #e9f3f1; }
+
+        .caps-warning {
+            display: none;
+            margin-top: 8px;
+            padding: 8px 12px;
+            border: 1px solid var(--warn-line);
+            border-radius: 6px;
+            background: var(--warn-bg);
+            color: var(--warn-text);
+            font-size: 13px;
+        }
+        .caps-warning.visible { display: block; }
+
+        .assist {
+            margin: -4px 0 20px;
+            text-align: right;
+            font-size: 13.5px;
+        }
+        .assist a { font-weight: 600; text-decoration: none; }
+        .assist a:hover { text-decoration: underline; }
+
+        .submit {
+            width: 100%;
+            height: 49px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            border: 0;
+            border-radius: 8px;
+            background: var(--accent);
+            color: #fff;
+            font: inherit;
+            font-size: 15px;
+            font-weight: 650;
+            cursor: pointer;
+            transition: background .15s;
+        }
+        .submit:hover { background: var(--accent-hov); }
+        .submit:disabled { background: #6aa8a2; cursor: progress; }
+
+        .spinner {
+            display: none;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, .45);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+        .submit.loading .spinner { display: inline-block; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .signup {
+            margin: 22px 0 0;
+            text-align: center;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        .signup a { font-weight: 600; text-decoration: none; }
+        .signup a:hover { text-decoration: underline; }
+
+        .divider {
+            height: 1px;
+            margin: 24px 0 16px;
+            background: var(--line);
+        }
+
+        .privacy-note {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            justify-content: center;
+            color: var(--muted);
+            font-size: 12.5px;
+            line-height: 1.55;
+            text-align: left;
+        }
+        .privacy-note svg { flex: none; margin-top: 2px; color: var(--accent); }
 
         .back-home {
-            margin-top: 22px;
+            margin-top: 18px;
             text-align: center;
-            font-size: 12px;
+            font-size: 13.5px;
+        }
+        .back-home a { color: var(--ink-soft); text-decoration: none; }
+        .back-home a:hover { color: var(--accent); text-decoration: underline; }
+
+        .page-footer {
+            color: var(--muted);
+            font-size: 12.5px;
+            text-align: center;
         }
 
-        .back-home a {
-            color: #66738a;
-            text-decoration: none;
-        }
-
-        .back-home a:hover {
-            color: #4257dc;
-        }
-
-        @media (max-width: 760px) {
-            body {
-                padding: 15px;
-                align-items: center;
-            }
-
-            .app {
-                max-width: 450px;
-                min-height: auto;
-                display: block;
-                border-radius: 23px;
-            }
-
-            .brand-panel {
-                display: none;
-            }
-
-            .login-panel {
-                padding: 32px 25px;
-            }
+        /* ---------- Responsive ---------- */
+        @media (max-width: 860px) {
+            .shell { grid-template-columns: 1fr; max-width: 460px; }
+            .brand-panel { display: none; }
+            .form-panel { padding: 32px 24px; }
 
             .mobile-brand {
                 display: flex;
                 align-items: center;
                 gap: 11px;
-                margin-bottom: 32px;
+                margin-bottom: 28px;
             }
-
-            .mobile-brand .brand-logo {
-                background: linear-gradient(135deg, #4357d9, #7562e9);
-                color: white;
-                border: 0;
-            }
-
-            .mobile-brand .brand-name {
-                color: #1d2c4e;
-                font-size: 18px;
-            }
-
-            .mobile-brand .brand-caption {
-                color: #8a96ad;
-            }
-
-            .login-panel h2 {
-                font-size: 29px;
-            }
-
-            .subtitle {
-                margin-bottom: 25px;
-            }
-
-            .divider {
-                margin-top: 23px;
-            }
+            .mobile-brand .logo { background: var(--brand); color: #fff; }
+            .mobile-brand .brand-name { color: var(--ink); }
+            .mobile-brand .brand-sub  { color: var(--muted); }
         }
 
-        @media (max-width: 360px) {
-            body {
-                padding: 8px;
-            }
+        @media (max-width: 380px) {
+            body { padding: 12px 8px; }
+            .form-panel { padding: 26px 18px; }
+            .form-panel h2 { font-size: 26px; }
+        }
 
-            .login-panel {
-                padding: 25px 18px;
-            }
-
-            .login-panel h2 {
-                font-size: 26px;
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                transition-duration: .01ms !important;
             }
         }
     </style>
@@ -459,236 +476,285 @@
 
 <body>
 
-<div class="app">
+<a class="skip-link" href="#rollNo">Skip to sign in form</a>
 
-    <section class="brand-panel">
+<main class="shell">
+
+    <!-- ===== Brand panel ===== -->
+    <section class="brand-panel" aria-label="About AttendancePro">
 
         <div class="brand">
-            <div class="brand-logo">A</div>
+            <div class="logo" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="5" width="16" height="15" rx="2.5"/>
+                    <path d="M8 3v4M16 3v4M4 10h16"/>
+                    <path d="M9 15l2 2 4-4"/>
+                </svg>
+            </div>
             <div>
                 <div class="brand-name">AttendancePro</div>
-                <div class="brand-caption">STUDENT PORTAL</div>
+                <div class="brand-sub">Student Portal</div>
             </div>
         </div>
 
         <div class="hero">
-
-            <span class="hero-label">YOUR CAMPUS, CONNECTED</span>
-
-            <h1>Your academic journey, all in one place.</h1>
-
+            <h1>Know exactly where your attendance stands.</h1>
             <p>
-                Access your profile, follow your attendance,
-                and stay up to date with your academic records
-                through your personal student portal.
+                Check your subject-wise attendance, review your records,
+                and keep your profile up to date, all from one place.
             </p>
 
-            <div class="illustration">
-                <svg viewBox="0 0 340 180"
-                     xmlns="http://www.w3.org/2000/svg"
-                     role="img"
-                     aria-label="Student dashboard illustration">
-
-                    <rect x="33" y="22" width="274" height="143"
-                          rx="14" fill="#ffffff" opacity=".12"/>
-
-                    <rect x="44" y="33" width="252" height="122"
-                          rx="10" fill="#ffffff"/>
-
-                    <rect x="57" y="45" width="72" height="98"
-                          rx="7" fill="#edf0ff"/>
-
-                    <circle cx="93" cy="70" r="17" fill="#b9c3ff"/>
-
-                    <path d="M68 109 Q93 77 118 109 L118 121 L68 121Z"
-                          fill="#6574e8"/>
-
-                    <rect x="145" y="48" width="112" height="10"
-                          rx="5" fill="#dfe4f5"/>
-
-                    <rect x="145" y="65" width="85" height="6"
-                          rx="3" fill="#e9ecf7"/>
-
-                    <rect x="145" y="84" width="65" height="51"
-                          rx="7" fill="#e8f8ef"/>
-
-                    <path d="M157 108 L168 118 L190 96"
-                          fill="none" stroke="#21a675"
-                          stroke-width="5" stroke-linecap="round"
-                          stroke-linejoin="round"/>
-
-                    <rect x="220" y="84" width="57" height="51"
-                          rx="7" fill="#f0edff"/>
-
-                    <path d="M230 119 L239 107 L247 112 L263 95"
-                          fill="none" stroke="#7564e9"
-                          stroke-width="3" stroke-linecap="round"
-                          stroke-linejoin="round"/>
-
-                    <circle cx="288" cy="28" r="5" fill="#a8b4ff"/>
-                    <circle cx="24" cy="139" r="7" fill="#8ee4c1"/>
-
-                </svg>
+            <div class="register-card" role="img"
+                 aria-label="Sample attendance register showing present and absent marks for the week">
+                <div class="register-head">
+                    This week
+                    <span>Sample view</span>
+                </div>
+                <table class="register-grid" aria-hidden="true">
+                    <thead>
+                        <tr><th></th><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Mathematics</td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark a">A</span></td>
+                            <td><span class="mark p">P</span></td>
+                        </tr>
+                        <tr>
+                            <td>Physics</td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark a">A</span></td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark p">P</span></td>
+                        </tr>
+                        <tr>
+                            <td>Computer Sci.</td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark p">P</span></td>
+                            <td><span class="mark p">P</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="register-foot">P = Present, A = Absent</div>
             </div>
-
         </div>
 
         <div class="brand-footer">
             Student Attendance Management System
-            <br>
-            Smart records. Clear insights. Better tracking.
         </div>
 
     </section>
 
-    <section class="login-panel">
+    <!-- ===== Form panel ===== -->
+    <section class="form-panel" aria-labelledby="signin-title">
 
         <div class="mobile-brand">
-            <div class="brand-logo">A</div>
+            <div class="logo" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="5" width="16" height="15" rx="2.5"/>
+                    <path d="M8 3v4M16 3v4M4 10h16"/>
+                    <path d="M9 15l2 2 4-4"/>
+                </svg>
+            </div>
             <div>
                 <div class="brand-name">AttendancePro</div>
-                <div class="brand-caption">STUDENT PORTAL</div>
+                <div class="brand-sub">Student Portal</div>
             </div>
         </div>
 
-        <div class="welcome-label">STUDENT SIGN IN</div>
-
-        <h2>Welcome back!</h2>
+        <h2 id="signin-title">Sign in to your account</h2>
 
         <p class="subtitle">
-            Sign in with your student credentials
-            to continue to your personal dashboard.
+            Use your roll number and password to view your attendance.
         </p>
 
-        <%
-            String error = (String) request.getAttribute("error");
-            String success = (String) request.getAttribute("success");
-
-            if (success != null) {
-        %>
-            <div class="message success">
-                <%= escapeHtml(success) %>
+        <% if (success != null) { %>
+            <div class="message success" role="status">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>
+                </svg>
+                <span><%= escapeHtml(success) %></span>
             </div>
-        <%
-            }
+        <% } %>
 
-            if (error != null) {
-        %>
-            <div class="message error">
-                <%= escapeHtml(error) %>
+        <% if (registered) { %>
+            <div class="message success" role="status">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>
+                </svg>
+                <span>Your account has been created. Sign in to continue.</span>
             </div>
-        <%
-            }
+        <% } %>
 
-            if ("1".equals(request.getParameter("registered"))) {
-        %>
-            <div class="message success">
-                Your account was created successfully.
-                Please sign in.
+        <% if (loggedOut) { %>
+            <div class="message success" role="status">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>
+                </svg>
+                <span>You have been signed out.</span>
             </div>
-        <%
-            }
+        <% } %>
 
-            if ("1".equals(request.getParameter("loggedOut"))) {
-        %>
-            <div class="message success">
-                You have been logged out successfully.
+        <% if (error != null) { %>
+            <div class="message error" role="alert">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/>
+                </svg>
+                <span><%= escapeHtml(error) %></span>
             </div>
-        <%
-            }
-        %>
+        <% } %>
 
-        <form action="<%= request.getContextPath() %>/studentLogin"
-              method="post">
+        <form id="loginForm" action="<%= ctx %>/studentLogin" method="post" autocomplete="on">
 
             <div class="field">
-                <label for="rollNo">Student Roll Number</label>
-
+                <label for="rollNo">Roll number</label>
                 <div class="input-wrap">
                     <input
                         id="rollNo"
                         type="text"
                         name="rollNo"
+                        value="<%= escapeHtml(prefill) %>"
                         placeholder="Enter your roll number"
                         maxlength="50"
                         autocomplete="username"
-                        required>
+                        autocapitalize="off"
+                        autocorrect="off"
+                        spellcheck="false"
+                        required
+                        <%= (error != null) ? "aria-invalid=\"true\"" : "" %>>
                 </div>
             </div>
 
             <div class="field">
                 <label for="password">Password</label>
-
                 <div class="input-wrap">
                     <input
-                        class="password-input"
+                        class="has-toggle"
                         id="password"
                         type="password"
                         name="password"
                         placeholder="Enter your password"
                         autocomplete="current-password"
-                        required>
+                        required
+                        <%= (error != null) ? "aria-invalid=\"true\"" : "" %>>
 
                     <button
-                        class="show-password"
+                        class="toggle-password"
                         type="button"
                         id="togglePassword"
                         aria-controls="password"
+                        aria-pressed="false"
                         aria-label="Show password">
-                        SHOW
+                        Show
                     </button>
+                </div>
+                <div class="caps-warning" id="capsWarning" role="status">
+                    Caps Lock is on.
                 </div>
             </div>
 
-            <div class="forgot-password">
-                <a href="<%= request.getContextPath() %>/forgotPassword.jsp">
-                    Forgot Password?
-                </a>
+            <div class="assist">
+                <a href="<%= ctx %>/forgotPassword.jsp">Forgot password?</a>
             </div>
 
-            <button class="login-button" type="submit">
-                Sign In to Portal &rarr;
+            <button class="submit" type="submit" id="submitBtn">
+                <span class="spinner" aria-hidden="true"></span>
+                <span id="submitLabel">Sign in</span>
             </button>
 
         </form>
 
-        <div class="register">
-            New student here?
-            <a href="studentRegister.jsp">Create an account</a>
-        </div>
+        <p class="signup">
+            New student?
+            <a href="<%= ctx %>/studentRegister.jsp">Create an account</a>
+        </p>
 
         <div class="divider"></div>
 
-        <div class="security-note">
-            <span class="security-icon">&#10003;</span>
-            <span>Personal student access · Your own attendance records</span>
+        <div class="privacy-note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/>
+            </svg>
+            <span>You can only view your own attendance records.
+                  Never share your password with anyone.</span>
         </div>
 
         <div class="back-home">
-            <a href="index.jsp">&larr; Back to main dashboard</a>
+            <a href="<%= ctx %>/index.jsp">&larr; Back to main dashboard</a>
         </div>
 
     </section>
 
-</div>
+</main>
+
+<footer class="page-footer">
+    &copy; <%= year %> AttendancePro. All rights reserved.
+</footer>
 
 <script>
-    const passwordInput = document.getElementById("password");
-    const togglePassword = document.getElementById("togglePassword");
+    (function () {
+        "use strict";
 
-    togglePassword.addEventListener("click", function () {
+        var form        = document.getElementById("loginForm");
+        var pwd         = document.getElementById("password");
+        var toggle      = document.getElementById("togglePassword");
+        var caps        = document.getElementById("capsWarning");
+        var submitBtn   = document.getElementById("submitBtn");
+        var submitLabel = document.getElementById("submitLabel");
 
-        const isHidden = passwordInput.type === "password";
+        // Show / hide password
+        toggle.addEventListener("click", function () {
+            var hidden = pwd.type === "password";
+            pwd.type = hidden ? "text" : "password";
+            toggle.textContent = hidden ? "Hide" : "Show";
+            toggle.setAttribute("aria-pressed", String(hidden));
+            toggle.setAttribute("aria-label", hidden ? "Hide password" : "Show password");
+            pwd.focus();
+        });
 
-        passwordInput.type = isHidden ? "text" : "password";
+        // Caps Lock warning
+        function checkCaps(e) {
+            if (typeof e.getModifierState !== "function") return;
+            caps.classList.toggle("visible", e.getModifierState("CapsLock"));
+        }
+        pwd.addEventListener("keydown", checkCaps);
+        pwd.addEventListener("keyup", checkCaps);
+        pwd.addEventListener("blur", function () { caps.classList.remove("visible"); });
 
-        togglePassword.textContent = isHidden ? "HIDE" : "SHOW";
+        // Double-submit rokne ke liye loading state
+        form.addEventListener("submit", function () {
+            if (submitBtn.disabled) return;
+            submitBtn.disabled = true;
+            submitBtn.classList.add("loading");
+            submitLabel.textContent = "Signing in...";
+        });
 
-        togglePassword.setAttribute(
-            "aria-label",
-            isHidden ? "Hide password" : "Show password"
-        );
-    });
+        // Back button se aane par (bfcache) button reset karo
+        window.addEventListener("pageshow", function (e) {
+            if (e.persisted) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("loading");
+                submitLabel.textContent = "Sign in";
+            }
+        });
+
+        // Error ke baad first empty field par focus
+        var rollNo = document.getElementById("rollNo");
+        if (rollNo.value) { pwd.focus(); } else { rollNo.focus(); }
+    })();
 </script>
 
 </body>

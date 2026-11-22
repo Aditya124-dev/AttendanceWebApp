@@ -6,6 +6,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -23,7 +24,18 @@ public class StudentServlet extends HttpServlet {
             throws ServletException, IOException {
 
         request.setCharacterEncoding("UTF-8");
-        response.setContentType("text/html;charset=UTF-8");
+
+        // Teacher-only authorization
+        HttpSession session = request.getSession(false);
+
+        if (session == null
+                || !(session.getAttribute("teacherId") instanceof Integer)
+                || !"TEACHER".equals(session.getAttribute("userRole"))) {
+
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                    "Please login as a teacher to add students.");
+            return;
+        }
 
         String rollNo = trim(request.getParameter("rollNo"));
         String name = trim(request.getParameter("name"));
@@ -32,7 +44,6 @@ public class StudentServlet extends HttpServlet {
         String email = trim(request.getParameter("email"));
         String phone = trim(request.getParameter("phone"));
 
-        // Validate required fields
         if (rollNo.isEmpty() || name.isEmpty()
                 || course.isEmpty() || semesterText.isEmpty()
                 || email.isEmpty() || phone.isEmpty()) {
@@ -42,14 +53,23 @@ public class StudentServlet extends HttpServlet {
             return;
         }
 
-        // Validate email
+        // Match existing database column limits.
+        if (rollNo.length() > 20 || name.length() > 100
+                || course.length() > 50 || email.length() > 150
+                || phone.length() > 20) {
+
+            showMessage(response, HttpServletResponse.SC_BAD_REQUEST,
+                    "One or more fields exceed the allowed length.");
+            return;
+        }
+
+        // No 12/13-digit minimum: existing short roll numbers remain valid.
         if (!email.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
             showMessage(response, HttpServletResponse.SC_BAD_REQUEST,
                     "Please enter a valid email address.");
             return;
         }
 
-        // Validate 10-digit Indian mobile number
         if (!phone.matches("[0-9]{10}")) {
             showMessage(response, HttpServletResponse.SC_BAD_REQUEST,
                     "Please enter a valid 10-digit mobile number.");
@@ -91,7 +111,7 @@ public class StudentServlet extends HttpServlet {
 
             if (result > 0) {
                 showMessage(response, HttpServletResponse.SC_OK,
-                        "Student added successfully! Email and mobile number saved.");
+                        "Student added successfully.");
             } else {
                 showMessage(response,
                         HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
@@ -103,13 +123,11 @@ public class StudentServlet extends HttpServlet {
 
             if ("23000".equals(e.getSQLState())) {
                 showMessage(response, HttpServletResponse.SC_CONFLICT,
-                        "This roll number may already be registered. "
-                        + "Please check the existing student record.");
+                        "This roll number may already be registered.");
             } else {
                 showMessage(response,
                         HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                        "Database operation failed. Please check the "
-                        + "database connection and students table columns.");
+                        "Database operation failed. Please check the server log.");
             }
 
         } catch (Exception e) {
@@ -130,8 +148,7 @@ public class StudentServlet extends HttpServlet {
                              String message) throws IOException {
 
         response.setStatus(status);
-
-        String safeMessage = escapeHtml(message);
+        response.setContentType("text/html;charset=UTF-8");
 
         response.getWriter().println(
                 "<!DOCTYPE html>"
@@ -139,9 +156,9 @@ public class StudentServlet extends HttpServlet {
                 + "<title>Student Registration</title></head>"
                 + "<body style='font-family:Arial,sans-serif;"
                 + "text-align:center;margin:60px;'>"
-                + "<h2>" + safeMessage + "</h2>"
+                + "<h2>" + escapeHtml(message) + "</h2>"
                 + "<p><a href='addStudent.jsp'>Back to Add Student</a></p>"
-                + "<p><a href='index.jsp'>Go to Home</a></p>"
+                + "<p><a href='teacherDashboard.jsp'>Teacher Dashboard</a></p>"
                 + "</body></html>");
     }
 

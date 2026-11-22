@@ -72,7 +72,6 @@ public class SendResetOtpServlet extends HttpServlet {
                 }
             }
 
-            // Remove any previous reset attempt.
             clearResetSession(session);
 
             session.setAttribute(
@@ -83,7 +82,8 @@ public class SendResetOtpServlet extends HttpServlet {
 
             String sql =
                     "SELECT student_id, email FROM students "
-                    + "WHERE LOWER(TRIM(email)) = ? LIMIT 2";
+                    + "WHERE LOWER(TRIM(email)) = ? "
+                    + "AND is_active = 1 LIMIT 2";
 
             try (Connection con = DBConnection.getConnection();
                  PreparedStatement ps = con.prepareStatement(sql)) {
@@ -96,8 +96,6 @@ public class SendResetOtpServlet extends HttpServlet {
                         studentId = rs.getInt("student_id");
                         registeredEmail = rs.getString("email");
 
-                        // Do not send OTP if the email is shared
-                        // by multiple student records.
                         if (rs.next()) {
                             studentId = 0;
                             registeredEmail = null;
@@ -119,7 +117,6 @@ public class SendResetOtpServlet extends HttpServlet {
 
                 String otpHash = hashOtp(otp, salt);
 
-                // Send email before activating the OTP.
                 EmailUtil.sendOtp(registeredEmail, otp);
 
                 session.setAttribute("resetStudentId", studentId);
@@ -131,7 +128,6 @@ public class SendResetOtpServlet extends HttpServlet {
                 session.setAttribute("resetOtpAttempts", 0);
             }
 
-            // Same response whether the email exists or not.
             request.setAttribute("otpSent", true);
             request.setAttribute("message",
                     "If an account is registered with this email, "
@@ -175,5 +171,6 @@ public class SendResetOtpServlet extends HttpServlet {
         session.removeAttribute("resetOtpSalt");
         session.removeAttribute("resetOtpExpiry");
         session.removeAttribute("resetOtpAttempts");
+        session.removeAttribute("resetOtpVerified");
     }
 }

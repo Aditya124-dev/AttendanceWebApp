@@ -45,11 +45,20 @@ public class ResetPasswordServlet extends HttpServlet {
         String confirmPassword = request.getParameter("confirmPassword");
 
         if (newPassword == null || confirmPassword == null
-                || newPassword.length() < 8
                 || newPassword.length() > 72) {
 
             showError(request, response,
-                    "Password must contain 8 to 72 characters.");
+                    "Password must contain at least 8 non-space characters and cannot exceed 72 characters.");
+            return;
+        }
+
+        long nonWhitespaceCharacters = newPassword.chars()
+                .filter(c -> !Character.isWhitespace(c))
+                .count();
+
+        if (nonWhitespaceCharacters < 8) {
+            showError(request, response,
+                    "Password must contain at least 8 non-space characters.");
             return;
         }
 
@@ -71,7 +80,12 @@ public class ResetPasswordServlet extends HttpServlet {
             String sql =
                     "UPDATE student_accounts "
                     + "SET password_hash = ?, password_salt = ? "
-                    + "WHERE student_id = ?";
+                    + "WHERE student_id = ? "
+                    + "AND EXISTS ("
+                    + "SELECT 1 FROM students "
+                    + "WHERE students.student_id = student_accounts.student_id "
+                    + "AND students.is_active = 1"
+                    + ")";
 
             int updatedRows;
 
@@ -87,11 +101,10 @@ public class ResetPasswordServlet extends HttpServlet {
 
             if (updatedRows != 1) {
                 showError(request, response,
-                        "Password could not be updated. Please try again.");
+                        "Password could not be updated. The student account may be inactive or unavailable.");
                 return;
             }
 
-            // Invalidate the OTP/reset session after successful update.
             session.invalidate();
 
             request.setAttribute("success",

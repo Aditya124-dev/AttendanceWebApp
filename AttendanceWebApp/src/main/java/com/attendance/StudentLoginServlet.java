@@ -1,3 +1,4 @@
+
 package com.attendance;
 
 import java.io.IOException;
@@ -32,7 +33,7 @@ public class StudentLoginServlet extends HttpServlet {
 
         if (rollNo.isEmpty()
                 || password == null
-                || password.isEmpty()) {
+                || password.trim().isEmpty()) {
 
             showError(request, response,
                     "Enter your roll number and password.");
@@ -47,7 +48,7 @@ public class StudentLoginServlet extends HttpServlet {
                     + "FROM students s "
                     + "JOIN student_accounts a "
                     + "ON s.student_id = a.student_id "
-                    + "WHERE s.roll_no = ?";
+                    + "WHERE s.roll_no = ? AND s.is_active = 1";
 
             int studentId;
             String studentName;
@@ -82,7 +83,6 @@ public class StudentLoginServlet extends HttpServlet {
                 return;
             }
 
-            // Prevent session fixation after successful login.
             HttpSession oldSession = request.getSession(false);
 
             if (oldSession != null) {

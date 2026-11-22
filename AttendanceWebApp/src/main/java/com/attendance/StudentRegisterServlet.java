@@ -1,3 +1,4 @@
+
 package com.attendance;
 
 import java.io.IOException;
@@ -43,9 +44,15 @@ public class StudentRegisterServlet extends HttpServlet {
             return;
         }
 
-        if (password.length() < 8) {
+        long nonWhitespaceCharacters = password.chars()
+                .filter(c -> !Character.isWhitespace(c))
+                .count();
+
+        if (nonWhitespaceCharacters < 8
+                || password.length() > 72) {
+
             showError(request, response,
-                    "Password must contain at least 8 characters.");
+                    "Password must contain at least 8 non-space characters and cannot exceed 72 characters.");
             return;
         }
 
@@ -61,7 +68,9 @@ public class StudentRegisterServlet extends HttpServlet {
 
             String findStudent =
                     "SELECT student_id FROM students "
-                    + "WHERE roll_no = ? AND LOWER(name) = LOWER(?)";
+                    + "WHERE roll_no = ? "
+                    + "AND LOWER(name) = LOWER(?) "
+                    + "AND is_active = 1";
 
             try (PreparedStatement ps =
                          con.prepareStatement(findStudent)) {
@@ -73,7 +82,7 @@ public class StudentRegisterServlet extends HttpServlet {
 
                     if (!rs.next()) {
                         showError(request, response,
-                                "Student details do not match our records.");
+                                "Student details do not match active records.");
                         return;
                     }
 
