@@ -26,10 +26,7 @@
     String classPin = (String) request.getAttribute("classPin");
     String subjectName = (String) request.getAttribute("subjectName");
     String subjectCode = (String) request.getAttribute("subjectCode");
-    String lectureEndTime =
-            (String) request.getAttribute("lectureEndTime");
-    String qrExpiryTime =
-            (String) request.getAttribute("qrExpiryTime");
+    String qrExpiryTime = (String) request.getAttribute("qrExpiryTime");
 
     String qrImageData = null;
 
@@ -53,9 +50,6 @@
             qrError = "QR image could not be generated.";
         }
     }
-
-    String renderUrl =
-            "https://attendancewebapp-5nym.onrender.com/";
 %>
 
 <!DOCTYPE html>
@@ -131,6 +125,11 @@
             cursor: pointer;
         }
 
+        .button:disabled {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
         .qr-frame {
             display: inline-block;
             padding: 12px;
@@ -189,6 +188,23 @@
             font-size: 13px;
         }
 
+        .countdown {
+            margin: 18px auto;
+            padding: 16px;
+            max-width: 400px;
+            background: #eafaf2;
+            border: 1px solid #bcebd0;
+            border-radius: 12px;
+            color: #17633c;
+        }
+
+        .countdown strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 28px;
+            font-variant-numeric: tabular-nums;
+        }
+
         footer {
             padding: 20px;
             text-align: center;
@@ -198,8 +214,8 @@
 
         @media print {
             header .button, form, .print-button,
-            footer, .test-link {
-                display: none;
+            footer, .countdown {
+                display: none !important;
             }
 
             body {
@@ -235,25 +251,10 @@
             </div>
         <% } %>
 
-        <div class="url-box test-link">
-            <strong>Live Website Connectivity Test</strong>
-            <p>
-                <a href="<%= renderUrl %>"
-                   target="_blank"
-                   rel="noopener noreferrer">
-                    Open AttendancePro on Render
-                </a>
-            </p>
-            <small>
-                Is link ko mobile par open karke live website
-                connectivity check kar sakte ho.
-            </small>
-        </div>
-
         <% if (qrImageData != null) { %>
 
             <h3>
-                <%= escapeHtml(subjectCode) %> —
+                <%= escapeHtml(subjectCode) %> &mdash;
                 <%= escapeHtml(subjectName) %>
             </h3>
 
@@ -264,20 +265,14 @@
             </div>
 
             <div class="pin-box">
-
-                <p>Share this PIN with students in the classroom.</p>
+                <p>Current Lecture PIN</p>
 
                 <div class="pin">
                     <%= escapeHtml(classPin) %>
                 </div>
 
                 <p>
-                    <strong>PIN expires at:</strong>
-                    <%= escapeHtml(lectureEndTime) %>
-                </p>
-
-                <p>
-                    QR expires at:
+                    <strong>QR &amp; PIN expiry:</strong>
                     <%= escapeHtml(qrExpiryTime) %>
                 </p>
 
@@ -286,7 +281,11 @@
                         onclick="window.print()">
                     Print QR &amp; PIN
                 </button>
+            </div>
 
+            <div class="countdown">
+                Automatic QR and PIN refresh in
+                <strong id="countdown">02:00</strong>
             </div>
 
             <div class="url-box">
@@ -298,17 +297,21 @@
 
             <p>
                 Generate the QR during your scheduled lecture.
-                The lecture PIN will appear after successful generation.
+                QR and PIN will automatically refresh every two minutes.
             </p>
 
         <% } %>
 
-        <form
-            action="<%= request.getContextPath() %>/generateQr"
-            method="post">
+        <form id="qrRefreshForm"
+              action="<%= request.getContextPath() %>/generateQr"
+              method="post">
 
-            <button class="button" type="submit">
-                Generate Lecture QR &amp; PIN
+            <button class="button"
+                    id="generateButton"
+                    type="submit">
+                <%= qrImageData != null
+                        ? "Refresh QR & PIN Now"
+                        : "Generate Lecture QR & PIN" %>
             </button>
 
         </form>
@@ -316,6 +319,7 @@
         <p class="note">
             QR generation is available only during a scheduled lecture
             assigned to the logged-in teacher.
+            Keep this page open during the lecture for automatic refresh.
         </p>
 
     </section>
@@ -325,6 +329,50 @@
     </footer>
 
 </div>
+
+<% if (qrImageData != null) { %>
+<script>
+(function () {
+    const form = document.getElementById("qrRefreshForm");
+    const button = document.getElementById("generateButton");
+    const countdown = document.getElementById("countdown");
+
+    let remainingSeconds = 120;
+    let submitted = false;
+
+    function updateCountdown() {
+        const minutes = Math.floor(remainingSeconds / 60);
+        const seconds = remainingSeconds % 60;
+
+        countdown.textContent =
+            String(minutes).padStart(2, "0") + ":" +
+            String(seconds).padStart(2, "0");
+
+        if (remainingSeconds <= 0) {
+            if (!submitted) {
+                submitted = true;
+                countdown.textContent = "Refreshing...";
+                button.disabled = true;
+                button.textContent = "Generating new QR & PIN...";
+                form.requestSubmit();
+            }
+            return;
+        }
+
+        remainingSeconds--;
+    }
+
+    form.addEventListener("submit", function () {
+        submitted = true;
+        button.disabled = true;
+        button.textContent = "Generating QR & PIN...";
+    });
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+})();
+</script>
+<% } %>
 
 </body>
 </html>

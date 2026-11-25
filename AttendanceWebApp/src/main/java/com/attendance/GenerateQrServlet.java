@@ -31,6 +31,8 @@ public class GenerateQrServlet extends HttpServlet {
     private static final ZoneId ZONE = ZoneId.of("Asia/Kolkata");
     private static final SecureRandom RANDOM = new SecureRandom();
 
+    private static final int QR_PIN_VALIDITY_MINUTES = 2;
+
     private static String hash(String value) throws Exception {
         byte[] bytes = MessageDigest.getInstance("SHA-256")
                 .digest(value.getBytes(StandardCharsets.UTF_8));
@@ -106,6 +108,7 @@ public class GenerateQrServlet extends HttpServlet {
                     ps.setTime(4, Time.valueOf(currentTime));
 
                     try (ResultSet rs = ps.executeQuery()) {
+
                         if (!rs.next()) {
                             throw new IllegalStateException(
                                     "No lecture assigned to you is currently "
@@ -136,15 +139,20 @@ public class GenerateQrServlet extends HttpServlet {
                     ps.setDate(2, Date.valueOf(today));
 
                     try (ResultSet rs = ps.executeQuery()) {
+
                         if (rs.next()) {
+
                             lectureId = rs.getInt("lecture_id");
 
                             if ("Cancelled".equalsIgnoreCase(
                                     rs.getString("session_status"))) {
+
                                 throw new IllegalStateException(
                                         "This lecture has been cancelled.");
                             }
+
                         } else {
+
                             String insertLectureSql =
                                     "INSERT INTO lecture_sessions "
                                   + "(timetable_id, lecture_date, "
@@ -162,6 +170,7 @@ public class GenerateQrServlet extends HttpServlet {
                                         3, Time.valueOf(lectureStart));
                                 insert.setTime(
                                         4, Time.valueOf(lectureEnd));
+
                                 insert.executeUpdate();
                             }
 
@@ -173,11 +182,13 @@ public class GenerateQrServlet extends HttpServlet {
                                 find.setDate(2, Date.valueOf(today));
 
                                 try (ResultSet rs2 = find.executeQuery()) {
+
                                     if (!rs2.next()) {
                                         throw new IllegalStateException(
                                                 "Lecture session could not "
                                               + "be created.");
                                     }
+
                                     lectureId = rs2.getInt("lecture_id");
                                 }
                             }
@@ -185,31 +196,49 @@ public class GenerateQrServlet extends HttpServlet {
                     }
                 }
 
+                LocalDateTime lectureExpiry =
+                        LocalDateTime.of(today, lectureEnd);
+
+                LocalDateTime sessionExpiry =
+                        now.plusMinutes(QR_PIN_VALIDITY_MINUTES);
+
+                if (lectureExpiry.isBefore(sessionExpiry)) {
+                    sessionExpiry = lectureExpiry;
+                }
+
+                if (!sessionExpiry.isAfter(now)) {
+                    throw new IllegalStateException(
+                            "Lecture has already ended.");
+                }
+
+                // Generate a secure 6-digit PIN.
                 String pin = String.format(
                         "%06d", RANDOM.nextInt(1_000_000));
 
                 String salt = randomHex(16);
                 String pinHash = hash(salt + ":" + pin);
 
-                LocalDateTime lectureExpiry =
-                        LocalDateTime.of(today, lectureEnd);
-
+                // Deactivate previous PINs for this lecture only.
                 try (PreparedStatement ps = con.prepareStatement(
                         "UPDATE lecture_attendance_codes "
                       + "SET is_active = 0 "
                       + "WHERE lecture_id = ? AND is_active = 1")) {
+
                     ps.setInt(1, lectureId);
                     ps.executeUpdate();
                 }
 
+                // Deactivate previous QR sessions for this lecture only.
                 try (PreparedStatement ps = con.prepareStatement(
                         "UPDATE attendance_qr_sessions "
                       + "SET is_active = 0 "
                       + "WHERE lecture_id = ? AND is_active = 1")) {
+
                     ps.setInt(1, lectureId);
                     ps.executeUpdate();
                 }
 
+                // Insert new PIN with 2-minute / lecture-end expiry.
                 try (PreparedStatement ps = con.prepareStatement(
                         "INSERT INTO lecture_attendance_codes "
                       + "(lecture_id, teacher_id, code_hash, code_salt, "
@@ -220,15 +249,12 @@ public class GenerateQrServlet extends HttpServlet {
                     ps.setInt(2, teacherId);
                     ps.setString(3, pinHash);
                     ps.setString(4, salt);
-                    ps.setObject(5, lectureExpiry);
+                    ps.setObject(5, sessionExpiry);
+
                     ps.executeUpdate();
                 }
 
-                LocalDateTime qrExpiry = now.plusMinutes(10);
-                if (lectureExpiry.isBefore(qrExpiry)) {
-                    qrExpiry = lectureExpiry;
-                }
-
+                // Generate a secure QR token.
                 byte[] randomBytes = new byte[32];
                 RANDOM.nextBytes(randomBytes);
 
@@ -238,12 +264,8 @@ public class GenerateQrServlet extends HttpServlet {
 
                 String tokenHash = hash(token);
 
-                try (PreparedStatement ps = con.prepareStatement(
-                        "UPDATE attendance_qr_sessions "
-                      + "SET is_active = 0 WHERE is_active = 1")) {
-                    ps.executeUpdate();
-                }
-
+                // Insert new QR with the same expiry as the PIN.
+                // Do not deactivate other teachers' QR sessions.
                 try (PreparedStatement ps = con.prepareStatement(
                         "INSERT INTO attendance_qr_sessions "
                       + "(lecture_id, token_hash, attendance_date, "
@@ -253,7 +275,8 @@ public class GenerateQrServlet extends HttpServlet {
                     ps.setInt(1, lectureId);
                     ps.setString(2, tokenHash);
                     ps.setDate(3, Date.valueOf(today));
-                    ps.setObject(4, qrExpiry);
+                    ps.setObject(4, sessionExpiry);
+
                     ps.executeUpdate();
                 }
 
@@ -263,14 +286,11 @@ public class GenerateQrServlet extends HttpServlet {
                         System.getenv("ATTENDANCE_PUBLIC_URL");
 
                 if (baseUrl != null && !baseUrl.isBlank()) {
+
                     baseUrl = baseUrl.trim().replaceAll("/+$", "");
 
-                    String contextPath = request.getContextPath();
-                    if (!contextPath.isEmpty()
-                            && !baseUrl.endsWith(contextPath)) {
-                        baseUrl += contextPath;
-                    }
                 } else {
+
                     String scheme = request.getScheme();
                     String host = request.getServerName();
                     int port = request.getServerPort();
@@ -294,25 +314,31 @@ public class GenerateQrServlet extends HttpServlet {
                 request.setAttribute("classPin", pin);
                 request.setAttribute("subjectName", subjectName);
                 request.setAttribute("subjectCode", subjectCode);
+
                 request.setAttribute(
                         "lectureEndTime", lectureEnd.toString());
+
                 request.setAttribute(
-                        "qrExpiryTime", qrExpiry.toLocalTime().toString());
+                        "qrExpiryTime", sessionExpiry.toLocalTime().toString());
 
                 request.getRequestDispatcher("/adminQr.jsp")
                         .forward(request, response);
 
             } catch (Exception e) {
+
                 try {
                     con.rollback();
                 } catch (Exception rollbackError) {
                     e.addSuppressed(rollbackError);
                 }
+
                 throw e;
             }
 
         } catch (Exception e) {
-            getServletContext().log("Unable to generate attendance QR/PIN", e);
+
+            getServletContext().log(
+                    "Unable to generate attendance QR/PIN", e);
 
             request.setAttribute(
                     "qrError",
@@ -324,4 +350,4 @@ public class GenerateQrServlet extends HttpServlet {
                     .forward(request, response);
         }
     }
-}                                                                                                                                                                                                                                                                                                                                              
+}
